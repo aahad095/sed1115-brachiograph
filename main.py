@@ -1,132 +1,110 @@
 # main.py
-# SED 1115 - Lab 7: Plotter Control
-# Reads a G-Code file and draws the shape on the pen plotter jig.
+# Owner: Abdulelah Aburehla (reviewed by all three of us)
 #
-# Files that need to be uploaded to the Pico:
-#   main.py, gcode_parser.py, servo_translator.py and the .gcode file(s)
+# The entry point. Runs automatically when the Pico powers up.
+# This file is only a list of calls to the functions in the other files,
+# so it shows the calling structure of the whole program.
 #
-# Calling structure:
-#   G-Code file -> parse_line() -> run_command() -> move_servo() -> translate() -> servos
-#                                               -> pen_up() / pen_down() / disable_servos()
+# Files to upload to the Pico: main.py, config.py, input_handler.py,
+# plotter_state.py, kinematics.py, servo_driver.py, servo_translator.py
 
-from machine import Pin, PWM
 import time
 
-from servo_translator import translate
-from gcode_parser import parse_line
-
-# ---------------- Settings ----------------
-
-# Change this to draw a different shape:
-# "line.gcode", "square.gcode", "circle.gcode" or "circle_and_square.gcode"
-GCODE_FILE = "circle.gcode"
-
-# Servo connectors on the expansion board: J1 = GPIO 0, J2 = GPIO 1, J3 = GPIO 2
-SHOULDER_PIN = 0
-ELBOW_PIN = 1
-WRIST_PIN = 2
-
-# Small angle corrections for our jig. Start at 0 and adjust after testing.
-SHOULDER_OFFSET = 0
-ELBOW_OFFSET = 0
-
-# Wrist (pen) angles from the lab handout: 0 = up, about 30 = down
-PEN_UP_ANGLE = 0
-PEN_DOWN_ANGLE = 30
-
-# Waiting times in seconds so the servos can finish moving
-MOVE_DELAY = 0.05     # after each small G1 move
-PEN_DELAY = 0.3       # after the pen goes up or down
-SETTLE_DELAY = 0.5    # before the pen goes down, so the arm has finished travelling
+import config
+import input_handler
+import plotter_state
+import kinematics
+import servo_driver
 
 
-# ---------------- Servo functions ----------------
-
-def setup_servos():
-    """Creates the three servo PWM outputs at 50 Hz and returns them in a dictionary."""
-    servos = {
-        "shoulder": PWM(Pin(SHOULDER_PIN)),
-        "elbow": PWM(Pin(ELBOW_PIN)),
-        "wrist": PWM(Pin(WRIST_PIN)),
-    }
-    for name in servos:
-        servos[name].freq(50)
-    return servos
-
-
-def move_servo(servo, angle):
-    """Moves one servo. translate() turns the angle into a safe duty_u16 value."""
-    servo.duty_u16(translate(angle))
+def setup():
+    """
+    Owner:   Abdulelah Aburehla
+    Purpose: Get everything ready before the loop starts.
+    Inputs:  none
+    Returns: tuple (inputs, servos, state) - the three dicts the loop uses
+    How:     Call the three "create" functions, then lift the pen so the
+             program always starts with the pen up.
+    Changes: creates inputs, servos and state (through the functions it calls)
+    """
+    inputs = input_handler.init_inputs()
+    servos = servo_driver.init_servos()
+    state = plotter_state.make_state()
+    servo_driver.set_pen(servos, False)
+    return (inputs, servos, state)
 
 
-def move_arm(servos, params):
-    """G1: moves the shoulder and/or the elbow. Only the ones in params are moved."""
-    if "S" in params:
-        move_servo(servos["shoulder"], params["S"] + SHOULDER_OFFSET)
-    if "E" in params:
-        move_servo(servos["elbow"], params["E"] + ELBOW_OFFSET)
-    time.sleep(MOVE_DELAY)
+def run_once(inputs, servos, state, now_ms):
+    """
+    Owner:   Abdulelah Aburehla
+    Purpose: Do one full pass: read the user, do the maths, move the arm.
+    Inputs:  inputs - dict from init_inputs()
+             servos - dict from init_servos()
+             state  - the live state dict
+             now_ms - int, current time from time.ticks_ms()
+    Returns: nothing
+    How:     Read inputs -> update pen and mode -> get the target angles ->
+             limit how far each joint moves -> move the servos.
+    Changes: state["alpha"], state["beta"] (other keys through the helpers)
+    """
+    x_count, y_count, pen_pressed, mode_pressed = input_handler.read_inputs(
+        inputs, state, now_ms)
+
+    plotter_state.update_pen(state, pen_pressed)
+    plotter_state.update_mode(state, mode_pressed)
+
+    alpha, beta = kinematics.get_target_angles(state, x_count, y_count)
+    state["alpha"] = kinematics.limit_step(
+        state["alpha"], alpha, config.MAX_STEP_DEG)
+    state["beta"] = kinematics.limit_step(
+        state["beta"], beta, config.MAX_STEP_DEG)
+
+    servo_driver.move_arm(servos, state["alpha"], state["beta"])
+    servo_driver.set_pen(servos, state["pen_down"])
 
 
-def pen_down(servos):
-    """M3: puts the pen down on the paper."""
-    time.sleep(SETTLE_DELAY)
-    move_servo(servos["wrist"], PEN_DOWN_ANGLE)
-    time.sleep(PEN_DELAY)
-
-
-def pen_up(servos):
-    """M5: lifts the pen off the paper."""
-    move_servo(servos["wrist"], PEN_UP_ANGLE)
-    time.sleep(PEN_DELAY)
-
-
-def disable_servos(servos):
-    """M18: stops the PWM signal to all three servos so they go limp."""
-    for name in servos:
-        servos[name].duty_u16(0)
-
-
-# ---------------- Command interpreter ----------------
-
-def run_command(command, params, servos):
-    """Checks which command it is and calls the right function."""
-    if command == "G1":
-        move_arm(servos, params)
-    elif command == "M3":
-        pen_down(servos)
-    elif command == "M5":
-        pen_up(servos)
-    elif command == "M18":
-        disable_servos(servos)
-    else:
-        print("Unknown command, skipped:", command)
-
-
-# ---------------- G-Code file ----------------
-
-def run_gcode_file(filename, servos):
-    """Reads the G-Code file one line at a time and runs each command."""
-    with open(filename, "r") as f:
-        for line in f:
-            command, params = parse_line(line)
-            if command is not None:
-                print(command, params)
-                run_command(command, params, servos)
+def wait_for_next_loop(start_ms):
+    """
+    Owner:   Abdulelah Aburehla
+    Purpose: Make every loop take 20 ms, however long the work took.
+    Inputs:  start_ms - int, time.ticks_ms() from the start of this loop
+    Returns: nothing
+    How:     Work out how long the loop has taken so far and sleep for
+             whatever is left of config.LOOP_MS. If we are already late,
+             don't sleep at all.
+    Changes: nothing
+    """
+    used_ms = time.ticks_diff(time.ticks_ms(), start_ms)
+    if used_ms < config.LOOP_MS:
+        time.sleep_ms(config.LOOP_MS - used_ms)
 
 
 def main():
-    servos = setup_servos()
-    pen_up(servos)   # always start with the pen up
+    """
+    Owner:   Abdulelah Aburehla
+    Purpose: Entry point of the program.
+    Inputs:  none
+    Returns: never returns (loops until the Pico is unplugged)
+    How:     Call setup() once, then repeat forever: note the time, do one
+             pass, do the housekeeping, wait for the rest of the 20 ms.
+             If the program is stopped (Stop in Thonny, or an error), the
+             "finally" part lifts the pen and lets the servos go limp, so
+             the pen never stays down on the paper.
+    Changes: nothing directly
+    """
+    inputs, servos, state = setup()
+    print("BrachioGraph ready. Mode button switches draw/joint mode.")
     try:
-        run_gcode_file(GCODE_FILE, servos)
-        print("Done drawing", GCODE_FILE)
-    except OSError:
-        print("Could not open", GCODE_FILE, "- did you upload it to the Pico?")
+        while True:
+            start_ms = time.ticks_ms()
+            run_once(inputs, servos, state, start_ms)
+            plotter_state.do_housekeeping(state)
+            wait_for_next_loop(start_ms)
     finally:
-        # this still runs if we press Stop in Thonny, so the pen never stays down
-        pen_up(servos)
-        disable_servos(servos)
+        servo_driver.set_pen(servos, False)
+        time.sleep_ms(300)
+        servo_driver.stop_servos(servos)
+        print("Stopped. Pen up, servos off.")
 
 
 if __name__ == "__main__":
