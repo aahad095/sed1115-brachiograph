@@ -1,3 +1,9 @@
+# servo_translator.py
+# NOT OUR CODE: translate() was given to us by the SED1115 teaching team
+# in Lab 6. The code is unchanged (we only added this comment).
+# Tested by: Abdulelah Aburehla
+# (tests/test_servo_logic.py checks 0, 90 and 180 degrees).
+
 def translate(angle: float) -> int:
 	"""
 	Converts an angle in degrees to the corresponding input
