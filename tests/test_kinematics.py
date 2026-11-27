@@ -1,5 +1,6 @@
 # test_kinematics.py  (test T4, runs on a laptop)
 # Owner: Abdul Ahad
+# Designed and run by: Abdul Ahad
 # Run from the repo folder with:  python -m unittest discover tests
 
 import math
@@ -8,6 +9,7 @@ import unittest
 import fakes  # sets up the import path
 import config
 import kinematics
+import servo_driver
 
 
 def pen_position(alpha, beta):
@@ -109,10 +111,24 @@ class TestGetTargetAngles(unittest.TestCase):
                 "alpha": 75.0, "beta": 35.0}
 
     def test_joint_mode(self):
+        # knobs at the ends -> servo limits, given back as joint angles
         state = self.make_state(config.MODE_JOINT)
         alpha, beta = kinematics.get_target_angles(state, 0, 65535)
-        self.assertAlmostEqual(alpha, config.SHOULDER_LIMITS[0])
-        self.assertAlmostEqual(beta, config.ELBOW_LIMITS[1])
+        self.assertAlmostEqual(
+            servo_driver.joint_to_servo_angle(alpha, config.SHOULDER_OFFSET,
+                                              config.SHOULDER_DIR, (0, 180)),
+            config.SHOULDER_LIMITS[0])
+        self.assertAlmostEqual(
+            servo_driver.joint_to_servo_angle(beta, config.ELBOW_OFFSET,
+                                              config.ELBOW_DIR, (0, 180)),
+            config.ELBOW_LIMITS[1])
+
+    def test_servo_to_joint_undoes_joint_to_servo(self):
+        for joint in [100.0, 130.5, 160.0]:
+            servo = config.ELBOW_OFFSET + config.ELBOW_DIR * joint
+            self.assertAlmostEqual(kinematics.servo_to_joint(
+                servo, config.ELBOW_OFFSET, config.ELBOW_DIR), joint)
+
 
     def test_drawing_mode_sets_x_and_y(self):
         state = self.make_state(config.MODE_XY)
@@ -120,6 +136,52 @@ class TestGetTargetAngles(unittest.TestCase):
         self.assertAlmostEqual(state["x"], config.AREA[0][0])
         self.assertAlmostEqual(state["y"], config.AREA[1][0])
         self.assertEqual((alpha, beta), kinematics.solve(state["x"], state["y"]))
+
+
+def servo_angles(x, y):
+    """Pen target in mm -> (shoulder servo, elbow servo) without clamping."""
+    alpha, beta = kinematics.solve(x, y)
+    shoulder = config.SHOULDER_OFFSET + config.SHOULDER_DIR * alpha
+    elbow = config.ELBOW_OFFSET + config.ELBOW_DIR * beta
+    return (shoulder, elbow)
+
+
+class TestCalibration(unittest.TestCase):
+    """
+    The Lab 7 square.gcode (made by the course for this jig) draws a 100 mm
+    square with corners at x = 58 / 158 and y = 89.5 / 189.5 mm. If our
+    offsets and directions are right, solve() must give the same servo
+    angles as that file for each corner.
+    """
+
+    def test_square_gcode_corners(self):
+        corners = [((158.0, 89.5), (47.847, 57.273)),
+                   ((58.0, 89.5), (57.581, 15.152)),
+                   ((58.0, 189.5), (107.266, 15.152)),
+                   ((158.0, 189.5), (74.88, 57.273))]
+        for (x, y), (gcode_s, gcode_e) in corners:
+            shoulder, elbow = servo_angles(x, y)
+            self.assertAlmostEqual(shoulder, gcode_s, delta=0.1)
+            self.assertAlmostEqual(elbow, gcode_e, delta=0.1)
+
+    def test_whole_area_is_inside_the_servo_limits(self):
+        # every point of AREA (every 2.5 mm) needs no clamping
+        (x0, x1), (y0, y1) = config.AREA
+        x = x0
+        while x <= x1:
+            y = y0
+            while y <= y1:
+                shoulder, elbow = servo_angles(x, y)
+                self.assertTrue(config.SHOULDER_LIMITS[0] <= shoulder <= config.SHOULDER_LIMITS[1])
+                self.assertTrue(config.ELBOW_LIMITS[0] <= elbow <= config.ELBOW_LIMITS[1])
+                y = y + 2.5
+            x = x + 2.5
+
+    def test_start_angles_are_the_middle_of_the_area(self):
+        (x0, x1), (y0, y1) = config.AREA
+        alpha, beta = kinematics.solve((x0 + x1) / 2, (y0 + y1) / 2)
+        self.assertAlmostEqual(alpha, config.START_ALPHA, delta=0.1)
+        self.assertAlmostEqual(beta, config.START_BETA, delta=0.1)
 
 
 if __name__ == "__main__":

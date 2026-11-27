@@ -1,5 +1,7 @@
 # input_handler.py
 # Owner: Claire Bryan
+# Designed by: Claire Bryan
+# Tested by:   Claire Bryan (tests/test_input_logic.py, tests/pico_test_inputs.py)
 #
 # Reads the two knobs and the two push buttons.
 # Knob readings are smoothed with an 8-sample moving average.

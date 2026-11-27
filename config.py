@@ -5,8 +5,12 @@
 # There are no functions here. Every other file imports this one.
 # Nothing in this file changes while the program is running.
 #
-# Values marked "TODO" get filled in after task 3 (servo limits), task 4
-# (jig geometry) and calibration. Each one has its own GitHub issue.
+# Designed by: Abdulelah Aburehla
+# Tested by:   Abdulelah Aburehla (tests/test_servo_logic.py),
+#              Abdul Ahad (calibration numbers, tests/test_kinematics.py)
+#
+# The servo limits, pen angles and button pins still need a final check
+# on the jig. Each one has its own GitHub issue.
 
 # const() only exists in MicroPython. On a laptop we use a stand-in
 # so the unit tests can still import this file.
@@ -47,7 +51,11 @@ LA = 155.0                  # shoulder-to-elbow link length
 LB = 155.0                  # elbow-to-pen link length
 
 # ---- Safe drawing area in mm: ((x_min, x_max), (y_min, y_max)) ----
-AREA = ((20.0, 190.0), (20.0, 250.0))   # TODO: measure on the jig (task 4, issue #35)
+# The biggest rectangle where every point needs servo angles at least
+# 0.5 degrees inside SHOULDER_LIMITS and ELBOW_LIMITS (checked every 2.5 mm,
+# see test_kinematics.py). It contains the 100 mm square from Lab 7.
+# Still to check on the jig that the paper covers it (issue #35).
+AREA = ((60.0, 160.0), (85.0, 195.0))
 
 # ---- Servo limits in degrees: (min, max) ----
 # For now these are the angle ranges the Lab 7 G-code files used on the jig
@@ -57,9 +65,17 @@ AREA = ((20.0, 190.0), (20.0, 250.0))   # TODO: measure on the jig (task 4, issu
 SHOULDER_LIMITS = (45.0, 110.0)
 ELBOW_LIMITS = (10.0, 60.0)
 
-# ---- Servo calibration offsets in degrees ----
-SHOULDER_OFFSET = 0.0            # TODO: measure during calibration (issue #36)
-ELBOW_OFFSET = 0.0               # TODO: measure during calibration (issue #36)
+# ---- Joint angle -> servo angle ----
+# servo angle = OFFSET + DIR * joint angle
+#   shoulder servo = alpha - 75
+#   elbow servo    = 150 - beta   (the elbow servo turns the opposite way)
+# Worked out from the Lab 7 G-code files, which were made for this jig:
+# with these numbers line.gcode is a 100 mm line, square.gcode a 100 mm
+# square and circle.gcode a 50 mm radius circle (issue #36).
+SHOULDER_OFFSET = -75.0
+SHOULDER_DIR = 1
+ELBOW_OFFSET = 150.0
+ELBOW_DIR = -1
 
 # ---- Pen servo positions in degrees ----
 PEN_UP = 0.0                     # from the Lab 7 handout
@@ -68,6 +84,7 @@ PEN_DOWN = 30.0                  # from the Lab 7 handout
 # ---- Smoothing ----
 MAX_STEP_DEG = 2.0               # most a joint may move in one loop (degrees)
 
-# ---- Where the arm starts (degrees, inside the limits above) ----
-START_ALPHA = 75.0
-START_BETA = 35.0
+# ---- Where the arm starts: joint angles for the middle of AREA (110, 140) ----
+# (servo angles 74.1 and 32.1, inside the limits above)
+START_ALPHA = 149.1
+START_BETA = 117.9

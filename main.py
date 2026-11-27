@@ -1,5 +1,7 @@
 # main.py
 # Owner: Abdulelah Aburehla (reviewed by all three of us)
+# Designed by: Abdulelah Aburehla
+# Tested by:   Abdulelah Aburehla (tests/test_main_logic.py), whole team on the jig
 #
 # The entry point. Runs automatically when the Pico powers up.
 # This file is only a list of calls to the functions in the other files,

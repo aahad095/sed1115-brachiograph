@@ -1,5 +1,7 @@
 # plotter_state.py
 # Owner: Claire Bryan
+# Designed by: Claire Bryan
+# Tested by:   Claire Bryan (tests/test_state.py)
 #
 # Looks after the "state" dict, which holds everything that changes while
 # the program runs (pen position, joint angles, pen up/down, mode).

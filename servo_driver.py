@@ -1,5 +1,8 @@
 # servo_driver.py
 # Owner: Abdulelah Aburehla
+# Designed by: Abdulelah Aburehla
+# Tested by:   Abdulelah Aburehla (tests/test_servo_logic.py,
+#              tests/pico_test_servos.py)
 #
 # The only file that is allowed to move a servo. Every angle is corrected
 # with its calibration offset and clamped to the servo limits here, and the
@@ -44,18 +47,20 @@ def init_servos():
     return servos
 
 
-def joint_to_servo_angle(joint_angle, offset, limits):
+def joint_to_servo_angle(joint_angle, offset, direction, limits):
     """
     Owner:   Abdulelah Aburehla
     Purpose: Turn a joint angle from the maths into an angle the servo can use.
     Inputs:  joint_angle - float, alpha or beta in degrees
              offset      - float, calibration offset in degrees (from config)
+             direction   - 1 or -1, -1 if the servo turns the opposite way
              limits      - tuple (min, max) in degrees (from config)
     Returns: float, servo angle in degrees, always inside the limits
-    How:     Add the offset, then call clamp() with the limits.
+    How:     servo angle = offset + direction * joint angle,
+             then call clamp() with the limits.
     Changes: nothing
     """
-    servo_angle = joint_angle + offset
+    servo_angle = offset + direction * joint_angle
     return clamp(servo_angle, limits[0], limits[1])
 
 
@@ -81,15 +86,16 @@ def move_arm(servos, alpha, beta):
              alpha  - float, shoulder joint angle in degrees
              beta   - float, elbow joint angle in degrees
     Returns: nothing
-    How:     Call joint_to_servo_angle() for each joint with its offset and
-             limits from config, then pass both servo angles to the provided
-             safety function, which sets the PWM outputs.
+    How:     Call joint_to_servo_angle() for each joint with its offset,
+             direction and limits from config, then pass both servo angles
+             to the provided safety function, which sets the PWM outputs.
     Changes: the shoulder and elbow PWM outputs
     """
     shoulder = joint_to_servo_angle(alpha, config.SHOULDER_OFFSET,
+                                    config.SHOULDER_DIR,
                                     config.SHOULDER_LIMITS)
     elbow = joint_to_servo_angle(beta, config.ELBOW_OFFSET,
-                                 config.ELBOW_LIMITS)
+                                 config.ELBOW_DIR, config.ELBOW_LIMITS)
     servos["shoulder"].duty_u16(translate(shoulder))
     servos["elbow"].duty_u16(translate(elbow))
 

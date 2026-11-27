@@ -1,5 +1,6 @@
 # test_input_logic.py  (runs on a laptop)
 # Owner: Claire Bryan
+# Designed and run by: Claire Bryan
 # Run from the repo folder with:  python -m unittest discover tests
 
 import unittest

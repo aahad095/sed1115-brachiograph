@@ -1,5 +1,6 @@
 # pico_test_inputs.py  (tests T1 and T2, runs on the PICO)
 # Owner: Claire Bryan
+# Designed and run by: Claire Bryan
 #
 # Upload this file to the Pico next to the project files, open it in Thonny
 # and press Run. No servos move in this test.

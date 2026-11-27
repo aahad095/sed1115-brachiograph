@@ -1,5 +1,6 @@
 # pico_test_servos.py  (tests T3 and T5, runs on the PICO with the jig)
 # Owner: Abdulelah Aburehla
+# Designed and run by: Abdulelah Aburehla
 #
 # Upload this file to the Pico next to the project files, open it in Thonny
 # and press Run. Keep a hand near the USB cable and unplug it if the arm
@@ -14,25 +15,35 @@
 import time
 import config
 import servo_driver
+from kinematics import servo_to_joint
 
 servos = servo_driver.init_servos()
 servo_driver.set_pen(servos, False)
 
-# start in the middle of both ranges
-mid_alpha = (config.SHOULDER_LIMITS[0] + config.SHOULDER_LIMITS[1]) / 2
-mid_beta = (config.ELBOW_LIMITS[0] + config.ELBOW_LIMITS[1]) / 2
-servo_driver.move_arm(servos, mid_alpha, mid_beta)
+# start in the middle of both servo ranges
+mid_shoulder = (config.SHOULDER_LIMITS[0] + config.SHOULDER_LIMITS[1]) / 2
+mid_elbow = (config.ELBOW_LIMITS[0] + config.ELBOW_LIMITS[1]) / 2
+
+
+def move_servos(shoulder, elbow):
+    """move_arm() takes joint angles, so turn the servo angles into joint angles first."""
+    alpha = servo_to_joint(shoulder, config.SHOULDER_OFFSET, config.SHOULDER_DIR)
+    beta = servo_to_joint(elbow, config.ELBOW_OFFSET, config.ELBOW_DIR)
+    servo_driver.move_arm(servos, alpha, beta)
+
+
+move_servos(mid_shoulder, mid_elbow)
 time.sleep_ms(1000)
 
 
 def sweep(joint, low, high):
-    """Steps one joint from low to high in 5 degree steps, other joint in the middle."""
+    """Steps one servo from low to high in 5 degree steps, other servo in the middle."""
     angle = low
     while angle <= high:
         if joint == "shoulder":
-            servo_driver.move_arm(servos, angle, mid_beta)
+            move_servos(angle, mid_elbow)
         else:
-            servo_driver.move_arm(servos, mid_alpha, angle)
+            move_servos(mid_shoulder, angle)
         print(joint, angle)
         time.sleep_ms(300)
         angle = angle + 5
@@ -51,7 +62,7 @@ try:
     sweep("elbow", config.ELBOW_LIMITS[1] + 10, config.ELBOW_LIMITS[1] + 10)
     sweep("elbow", config.ELBOW_LIMITS[0] - 10, config.ELBOW_LIMITS[0] - 10)
 
-    servo_driver.move_arm(servos, mid_alpha, mid_beta)
+    move_servos(mid_shoulder, mid_elbow)
     print("T5: pen down/up 10 times")
     for i in range(10):
         servo_driver.set_pen(servos, True)

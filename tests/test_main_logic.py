@@ -1,5 +1,6 @@
 # test_main_logic.py  (runs on a laptop)
 # Owner: Abdulelah Aburehla
+# Designed and run by: Abdulelah Aburehla
 # Runs run_once() from main.py many times with fake knobs, buttons and
 # servos, to check that all the files work together before we use the jig.
 # Run from the repo folder with:  python -m unittest discover tests
@@ -13,6 +14,7 @@ import input_handler
 import plotter_state
 import kinematics
 import main
+from servo_translator import translate
 
 
 def fake_setup():
@@ -54,9 +56,10 @@ class TestWholeLoop(unittest.TestCase):
         self.assertLessEqual(abs(state["alpha"] - before),
                              config.MAX_STEP_DEG + 0.001)
 
-        # after enough loops the shoulder reaches the top of its range
+        # after enough loops the shoulder servo reaches the top of its range
         self.run_loops(inputs, servos, state, 100, t + 20)
-        self.assertAlmostEqual(state["alpha"], config.SHOULDER_LIMITS[1])
+        self.assertEqual(servos["shoulder"].duty,
+                         translate(config.SHOULDER_LIMITS[1]))
 
     def test_pen_button_lowers_pen(self):
         inputs, servos, state = fake_setup()

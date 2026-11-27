@@ -1,4 +1,5 @@
 # fakes.py
+# Owner: whole group (shared helper used by every laptop test)
 # Pretend hardware for the laptop tests. These classes act like the
 # machine.ADC, machine.Pin and machine.PWM objects, so functions that
 # normally talk to the Pico can be checked on a laptop.

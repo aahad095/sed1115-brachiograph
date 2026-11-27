@@ -1,5 +1,7 @@
 # kinematics.py
 # Owner: Abdul Ahad
+# Designed by: Abdul Ahad
+# Tested by:   Abdul Ahad (tests/test_kinematics.py, test T4)
 #
 # All the maths: turns knob counts into a point on the paper, keeps that
 # point inside the safe area, and works out the shoulder and elbow angles.
@@ -62,6 +64,22 @@ def count_to_angle(count, min_deg, max_deg):
     Changes: nothing
     """
     return min_deg + (count / config.MAX_COUNT) * (max_deg - min_deg)
+
+
+def servo_to_joint(servo_angle, offset, direction):
+    """
+    Owner:   Abdul Ahad
+    Purpose: Turn a servo angle back into a joint angle (used in joint mode).
+    Inputs:  servo_angle - float, degrees
+             offset      - float, calibration offset from config
+             direction   - 1 or -1, from config
+    Returns: float, joint angle in degrees
+    How:     Undo servo = offset + direction * joint:
+             joint = (servo_angle - offset) * direction
+             (direction is 1 or -1, so multiplying is the same as dividing)
+    Changes: nothing
+    """
+    return (servo_angle - offset) * direction
 
 
 def to_mm(x_count, y_count):
@@ -206,16 +224,20 @@ def get_target_angles(state, x_count, y_count):
              x_count, y_count - int 0-65535, smoothed knob counts
     Returns: tuple (alpha, beta), floats in degrees
     How:     Joint mode: call count_to_angle() for each knob with the servo
-             limits from config. Drawing mode: call to_mm(), clamp_to_area()
+             limits from config, then servo_to_joint() so the state always
+             holds joint angles. Drawing mode: call to_mm(), clamp_to_area()
              and solve(). If solve() returns None, keep the angles already
              in the state so the arm just holds still.
     Changes: state["x"], state["y"] (drawing mode only)
     """
     if state["mode"] == config.MODE_JOINT:
-        alpha = count_to_angle(x_count, config.SHOULDER_LIMITS[0],
-                               config.SHOULDER_LIMITS[1])
-        beta = count_to_angle(y_count, config.ELBOW_LIMITS[0],
-                              config.ELBOW_LIMITS[1])
+        shoulder = count_to_angle(x_count, config.SHOULDER_LIMITS[0],
+                                  config.SHOULDER_LIMITS[1])
+        elbow = count_to_angle(y_count, config.ELBOW_LIMITS[0],
+                               config.ELBOW_LIMITS[1])
+        alpha = servo_to_joint(shoulder, config.SHOULDER_OFFSET,
+                               config.SHOULDER_DIR)
+        beta = servo_to_joint(elbow, config.ELBOW_OFFSET, config.ELBOW_DIR)
         return (alpha, beta)
 
     # drawing mode

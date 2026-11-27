@@ -1,5 +1,6 @@
 # test_servo_logic.py  (runs on a laptop)
 # Owner: Abdulelah Aburehla
+# Designed and run by: Abdulelah Aburehla
 # Run from the repo folder with:  python -m unittest discover tests
 
 import unittest
@@ -14,11 +15,15 @@ from servo_translator import translate
 class TestServoLogic(unittest.TestCase):
 
     def test_offset_is_added(self):
-        self.assertEqual(servo_driver.joint_to_servo_angle(70, 5, (45, 110)), 75)
+        self.assertEqual(servo_driver.joint_to_servo_angle(70, 5, 1, (45, 110)), 75)
+
+    def test_direction_flips_the_angle(self):
+        # elbow: servo = 150 - beta
+        self.assertEqual(servo_driver.joint_to_servo_angle(120, 150, -1, (10, 60)), 30)
 
     def test_past_a_limit_comes_back_as_the_limit(self):
-        self.assertEqual(servo_driver.joint_to_servo_angle(120, 0, (45, 110)), 110)
-        self.assertEqual(servo_driver.joint_to_servo_angle(35, 0, (45, 110)), 45)
+        self.assertEqual(servo_driver.joint_to_servo_angle(120, 0, 1, (45, 110)), 110)
+        self.assertEqual(servo_driver.joint_to_servo_angle(35, 0, 1, (45, 110)), 45)
 
     def test_angle_to_duty(self):
         self.assertEqual(servo_driver.angle_to_duty(0), 1638)     # 0.5 ms
@@ -30,6 +35,12 @@ class TestServoLogic(unittest.TestCase):
         servo_driver.move_arm(servos, 999, -999)
         self.assertEqual(servos["shoulder"].duty,
                          translate(config.SHOULDER_LIMITS[1]))
+        # elbow direction is -1, so a very small beta is a very big servo angle
+        self.assertEqual(servos["elbow"].duty,
+                         translate(config.ELBOW_LIMITS[1]))
+        servo_driver.move_arm(servos, -999, 999)
+        self.assertEqual(servos["shoulder"].duty,
+                         translate(config.SHOULDER_LIMITS[0]))
         self.assertEqual(servos["elbow"].duty,
                          translate(config.ELBOW_LIMITS[0]))
 

@@ -33,10 +33,20 @@ Change any of these in `config.py`.
 3. The pen starts **up**, in **drawing mode**. Turn the knobs to move the pen, press the pen button to put it down.
 4. Press the mode button for **joint mode** (X knob = shoulder, Y knob = elbow). The pen lifts every time the mode changes.
 5. Twice a second the shell prints a line like
-   `mode: draw | knobs: 31890 40211 | x,y mm: 102.7 160.1 | alpha,beta: 75.0 35.0 | pen down: False`
+   `mode: draw | knobs: 31890 40211 | x,y mm: 108.7 152.5 | alpha,beta: 153.8 118.2 | pen down: False`
+   (alpha and beta are the arm's joint angles from the maths, not the servo angles)
 6. Press Stop in Thonny to end. The pen lifts and the servos go limp.
 
-**Until calibration is done (issue #36), use joint mode on the jig.** The servo limits in `config.py` are the safe ranges from the Lab 7 G-code files, so the arm can't leave them in either mode.
+In drawing mode the knobs cover the safe area x 60–160 mm, y 85–195 mm (measured from the bottom-left of the paper). The servo limits in `config.py` are the safe ranges from the Lab 7 G-code files, so the arm can't leave them in either mode.
+
+## Calibration (joint angle → servo angle)
+
+```
+shoulder servo = alpha - 75
+elbow servo    = 150 - beta
+```
+
+We worked these out from the Lab 7 G-code files, which the course made for this jig. With these numbers `square.gcode` is exactly a 100 mm square (x 58–158, y 89.5–189.5), `line.gcode` a 100 mm line and `circle.gcode` a 50 mm radius circle. `tests/test_kinematics.py` checks that our `solve()` gives the same servo angles as `square.gcode` at all four corners (within 0.1°). They are stored in `config.py` as `SHOULDER_OFFSET`, `SHOULDER_DIR`, `ELBOW_OFFSET` and `ELBOW_DIR`.
 
 ## How to run the tests
 
@@ -46,7 +56,7 @@ Laptop tests (no Pico needed), from the repo folder:
 python -m unittest discover tests
 ```
 
-All 41 should pass. They cover every function that doesn't need hardware, plus fake-hardware checks of the buttons, servos and the whole loop.
+All 46 should pass. They cover every function that doesn't need hardware, the calibration against the Lab 7 G-code, plus fake-hardware checks of the buttons, servos and the whole loop.
 
 On-Pico tests: upload the project files plus the test file, then Run it in Thonny.
 
@@ -66,7 +76,8 @@ On-Pico tests: upload the project files plus the test file, then Run it in Thonn
 | `kinematics.py` | Abdul Ahad | Knob counts → mm → shoulder and elbow angles, smoothing |
 | `servo_driver.py` | Abdulelah | Offsets, limits and PWM output for the three servos |
 | `servo_translator.py` | **course material** | `translate()`: safe angle → duty_u16 (see below) |
-| `tests/` | all | Laptop unit tests and on-Pico tests |
+| `tests/` | all | Laptop unit tests and on-Pico tests (owner of each is in its header) |
+| `lab7/` | all | Our Lab 7 G-code plotter, kept for reference. Not part of the project. |
 
 ## Reused code and credits
 
@@ -77,6 +88,8 @@ On-Pico tests: upload the project files plus the test file, then Run it in Thonn
 
 ## Status
 
-See the Issues tab. Open issues are the on-jig tests (T1–T3, T5–T8), measuring the jig, and calibration.
+Orange: the code is complete and passes all laptop tests, and the demo runs. Still open (see the Issues tab): the on-jig tests T1–T3 and T5–T8, confirming the button pins, and checking that the paper covers the safe area.
+
+Every file has a header saying who designed it and who tested it.
 
 Our own code is under the MIT License (see LICENSE).
