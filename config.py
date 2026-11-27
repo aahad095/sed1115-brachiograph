@@ -20,7 +20,7 @@ except ImportError:
     def const(value):
         return value
 
-# ---- Pins (servo pins match Lab 7: J1, J2, J3. Button pins: TODO confirm, issue #39) ----
+# ---- Pins (servo pins match Lab 7: J1, J2, J3. Button pins: TODO confirm, issue #8) ----
 PIN_KNOB_X = const(26)      # ADC0, X potentiometer
 PIN_KNOB_Y = const(27)      # ADC1, Y potentiometer
 PIN_PEN_BUTTON = const(10)  # push button, pulled up (pressed = 0)
@@ -54,14 +54,14 @@ LB = 155.0                  # elbow-to-pen link length
 # The biggest rectangle where every point needs servo angles at least
 # 0.5 degrees inside SHOULDER_LIMITS and ELBOW_LIMITS (checked every 2.5 mm,
 # see test_kinematics.py). It contains the 100 mm square from Lab 7.
-# Still to check on the jig that the paper covers it (issue #35).
+# Still to check on the jig that the paper covers it (issue #11).
 AREA = ((60.0, 160.0), (85.0, 195.0))
 
 # ---- Servo limits in degrees: (min, max) ----
 # For now these are the angle ranges the Lab 7 G-code files used on the jig
 # (shoulder 47.8-107.3, elbow 10.8-57.3), rounded out a little. We know the
 # arm is safe inside them. They get replaced by measured values in task 3
-# (issue #34).
+# (issue #9).
 SHOULDER_LIMITS = (45.0, 110.0)
 ELBOW_LIMITS = (10.0, 60.0)
 
@@ -71,7 +71,7 @@ ELBOW_LIMITS = (10.0, 60.0)
 #   elbow servo    = 150 - beta   (the elbow servo turns the opposite way)
 # Worked out from the Lab 7 G-code files, which were made for this jig:
 # with these numbers line.gcode is a 100 mm line, square.gcode a 100 mm
-# square and circle.gcode a 50 mm radius circle (issue #36).
+# square and circle.gcode a 50 mm radius circle (issue #1).
 SHOULDER_OFFSET = -75.0
 SHOULDER_DIR = 1
 ELBOW_OFFSET = 150.0

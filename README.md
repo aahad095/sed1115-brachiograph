@@ -17,8 +17,8 @@ SED1115 Group 1 (Abdulelah Aburehla, Abdul Ahad, Claire Bryan) – MicroPython c
 |---|---|
 | X knob | GP26 (ADC0) |
 | Y knob | GP27 (ADC1) |
-| Pen button | GP10 (pull-up, pressed = 0) – to be confirmed, issue #39 |
-| Mode button | GP11 (pull-up, pressed = 0) – to be confirmed, issue #39 |
+| Pen button | GP10 (pull-up, pressed = 0) – to be confirmed, issue #8 |
+| Mode button | GP11 (pull-up, pressed = 0) – to be confirmed, issue #8 |
 | Shoulder servo | GP0 (J1) |
 | Elbow servo | GP1 (J2) |
 | Pen servo | GP2 (J3) |
@@ -88,7 +88,13 @@ On-Pico tests: upload the project files plus the test file, then Run it in Thonn
 
 ## Status
 
-Orange: the code is complete and passes all laptop tests, and the demo runs. Still open (see the Issues tab): the on-jig tests T1–T3 and T5–T8, confirming the button pins, and checking that the paper covers the safe area.
+Orange: the code is complete and passes all laptop tests, and the demo runs. Still open (see the Issues tab):
+
+- On-jig tests: T1/T2 (#7), T3 (#9), T5 (#10), T6 (#12), T7 (#13), T8 (#14)
+- Confirm the button pins (#8) and that the paper covers the safe area (#11)
+- Known limitation: a very fast knob spin bows a line (#15); the safe area is limited by the servo limits (#16)
+
+Past errors #1–#6 are closed, each with what went wrong and how it was fixed.
 
 Every file has a header saying who designed it and who tested it.
 
